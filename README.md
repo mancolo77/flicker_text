@@ -1,39 +1,48 @@
-<!--
-This README describes the package. If you publish this package to pub.dev,
-this README's contents appear on the landing page for your package.
+##Flicker Text
 
-For information about how to write a good package README, see the guide for
-[writing package pages](https://dart.dev/tools/pub/writing-package-pages).
+improved spoiler text with click and time setting
 
-For general information about developing packages, see the Dart guide for
-[creating packages](https://dart.dev/guides/libraries/create-packages)
-and the Flutter guide for
-[developing packages and plugins](https://flutter.dev/to/develop-packages).
--->
+## Example
 
-TODO: Put a short description of the package here that helps potential users
-know whether this package might be useful for them.
+void main() {
+  runApp(const SpoilerTextExampleApp());
+}
 
-## Features
+class SpoilerTextExampleApp extends StatelessWidget {
+  const SpoilerTextExampleApp({super.key});
 
-TODO: List what your package can do. Maybe include images, gifs, or videos.
-
-## Getting started
-
-TODO: List prerequisites and provide or point to information on how to
-start using the package.
-
-## Usage
-
-TODO: Include short and useful examples for package users. Add longer examples
-to `/example` folder.
-
-```dart
-const like = 'sample';
-```
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        backgroundColor: Colors.black,
+        appBar: AppBar(
+          title: const Text('Spoiler Animation Example'),
+        ),
+        body: const Center(
+          child: FlickerText(
+            showDurationInSeconds: 3,
+            tapShow: true,
+            enable: true,
+            maxParticleSize: 1.5,
+            particleDensity: .4,
+            speedOfParticles: 0.3,
+            fadeRadius: 1,
+            fadeAnimation: true,
+            enableGesture: true,
+            selection: TextSelection(baseOffset: 0, extentOffset: 18),
+            text: 'This is a spoiler! Tap to reveal.',
+            style: TextStyle(
+              fontSize: 50,
+              fontWeight: FontWeight.bold,
+              color: Colors.red,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
 
 ## Additional information
-
-TODO: Tell users more about the package: where to find more information, how to
-contribute to the package, how to file issues, what response they can expect
-from the package authors, and more.
+original package: https://pub.dev/packages/spoiler_widget
