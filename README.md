@@ -1,8 +1,14 @@
-##Flicker Text
+# Flicker Text
 
-improved spoiler text with click and time setting
+`Flicker Text` is an improved version of a spoiler text widget with click and time settings. This package provides a customizable widget that allows users to reveal hidden text with particle effects and time-based visibility.
 
 ## Example
+
+Here is a basic example of how to use `FlickerText` in your Flutter application:
+
+```dart
+import 'package:flutter/material.dart';
+import 'package:flicker_widget/flicker_text.dart';
 
 void main() {
   runApp(const SpoilerTextExampleApp());
@@ -43,6 +49,3 @@ class SpoilerTextExampleApp extends StatelessWidget {
     );
   }
 }
-
-## Additional information
-original package: https://pub.dev/packages/spoiler_widget
