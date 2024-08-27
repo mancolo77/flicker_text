@@ -49,3 +49,7 @@ class SpoilerTextExampleApp extends StatelessWidget {
     );
   }
 }
+```
+### Original package: 
+`https://pub.dev/packages/spoiler_widget`
+
