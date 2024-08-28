@@ -20,7 +20,7 @@ class FlickerText extends StatefulWidget {
     this.fadeAnimation = false,
     this.enableGesture = false,
     this.selection,
-    this.tapWithTimer = false,
+    this.tapShow = false,
     this.showDurationInSeconds = 3,
     required this.text,
     this.style,
@@ -38,7 +38,7 @@ class FlickerText extends StatefulWidget {
   final String text;
   final TextSelection? selection;
   final bool
-      tapWithTimer; // New parameter to enable/disable tap-to-show functionality
+      tapShow; // New parameter to enable/disable tap-to-show functionality
   final int
       showDurationInSeconds; // New parameter to set the duration in seconds for showing the text
 
@@ -52,11 +52,10 @@ class _FlickerTextState extends State<FlickerText>
   AnimationController? fadeAnimationController;
   Animation<double>? fadeAnimation;
   Future<void>? _currentShowFuture;
-  late double currentParticleSize;
-  late double initialParticleSize; // Store the initial particle size
-  Timer? _timer;
-
   bool _isShowingText = false;
+  late double currentParticleSize;
+  late double initialParticleSize;
+  Timer? _timer;
 
   late final AnimationController particleAnimationController;
   late final Animation<double> particleAnimation;
@@ -80,11 +79,11 @@ class _FlickerTextState extends State<FlickerText>
       widget.speedOfParticles,
       rng.nextDouble() * 2 * pi,
       rect,
-      center: offset,
     );
   }
 
   void initializeOffsets(StringDetails details) {
+    debugPrint('initializeOffsets');
     particles.clear();
     spoilerPath.reset();
 
@@ -113,16 +112,13 @@ class _FlickerTextState extends State<FlickerText>
 
     if (widget.fadeAnimation) {
       fadeAnimationController = AnimationController(
-        duration: const Duration(seconds: 2),
+        duration: const Duration(milliseconds: 300),
         vsync: this,
       );
-      fadeAnimation = Tween<double>(begin: 0, end: 1).animate(CurvedAnimation(
-        parent: fadeAnimationController!,
-        curve: Curves.easeInOutCubic,
-      ));
+      fadeAnimation =
+          Tween<double>(begin: 0, end: 1).animate(fadeAnimationController!);
     }
-
-    initialParticleSize = 2;
+    initialParticleSize = widget.maxParticleSize;
     currentParticleSize = initialParticleSize;
 
     enabled = widget.enable;
@@ -138,7 +134,8 @@ class _FlickerTextState extends State<FlickerText>
         if (_isShowingText) {
           return;
         }
-        if (widget.tapWithTimer &&
+
+        if (widget.tapShow &&
             spoilerRects.any((rect) => rect.contains(fadeOffset))) {
           _showTextTemporarily();
         } else if (widget.enable &&
@@ -154,7 +151,6 @@ class _FlickerTextState extends State<FlickerText>
 
   @override
   void dispose() {
-    _timer?.cancel();
     _onTapRecognizer.dispose();
     fadeAnimationController?.dispose();
     particleAnimationController.dispose();
@@ -164,10 +160,9 @@ class _FlickerTextState extends State<FlickerText>
   void _startDecreasingParticleSize() {
     if (_timer != null) _timer!.cancel();
 
-    const double decreaseDurationInSeconds =
-        1.0; // Set the duration of the decrease
-    final int numberOfSteps = (decreaseDurationInSeconds * 1000 / 40)
-        .round(); // Determine the number of steps
+    const double decreaseDurationInSeconds = 1.0; // Duration of decrease
+    final int numberOfSteps = (decreaseDurationInSeconds * 1000 / 50)
+        .round(); // Determine number of steps
     final double stepSize = initialParticleSize / numberOfSteps; // Step size
 
     _timer = Timer.periodic(const Duration(milliseconds: 50), (timer) {
@@ -178,14 +173,14 @@ class _FlickerTextState extends State<FlickerText>
         } else {
           _timer?.cancel();
           setState(() {
-            _isShowingText = false;
+            _isShowingText = true; // Mark text as showing
           });
-          enabled = true;
 
+          // Start showing text and managing particle size
           _currentShowFuture = Future.delayed(
               Duration(seconds: widget.showDurationInSeconds), () {
             if (mounted) {
-              _startIncreasingParticleSize(); //method add particles
+              _startIncreasingParticleSize(); // Increase particle size
             }
           });
         }
@@ -196,11 +191,10 @@ class _FlickerTextState extends State<FlickerText>
   void _startIncreasingParticleSize() {
     if (_timer != null) _timer!.cancel();
 
-    const double increaseDurationInSeconds =
-        1.0;
-    final int numberOfSteps = (increaseDurationInSeconds * 1000 / 80)
-        .round(); 
-    final double stepSize = initialParticleSize / numberOfSteps; 
+    const double increaseDurationInSeconds = 1.0; // Duration of increase
+    final int numberOfSteps = (increaseDurationInSeconds * 1000 / 50)
+        .round(); // Determine number of steps
+    final double stepSize = initialParticleSize / numberOfSteps; // Step size
 
     _timer = Timer.periodic(const Duration(milliseconds: 50), (timer) {
       setState(() {
@@ -209,14 +203,13 @@ class _FlickerTextState extends State<FlickerText>
               (currentParticleSize + stepSize).clamp(0.0, initialParticleSize);
         } else {
           _timer?.cancel();
+          setState(() {
+            _isShowingText = false; // Mark text as hidden
+            enabled = true; // Enable particles again
+          });
+          particleAnimationController.repeat();
         }
       });
-    });
-  }
-
-  void _resetParticleSize() {
-    setState(() {
-      currentParticleSize = initialParticleSize;
     });
   }
 
@@ -241,13 +234,8 @@ class _FlickerTextState extends State<FlickerText>
     if (oldWidget.enable != widget.enable) {
       _onEnabledChanged(widget.enable);
     }
-    _calculateCenterOffset();
 
     super.didUpdateWidget(oldWidget);
-  }
-
-  void _calculateCenterOffset() {
-    fadeOffset = spoilerBounds.center;
   }
 
   void _onEnabledChanged(bool enable) {
@@ -280,9 +268,7 @@ class _FlickerTextState extends State<FlickerText>
       enabled = false;
     });
 
-    _currentShowFuture?.then((_) {
-      _currentShowFuture = null;
-    });
+    _currentShowFuture?.then((_) => _currentShowFuture = null);
 
     _currentShowFuture =
         Future.delayed(Duration(seconds: widget.showDurationInSeconds), () {
@@ -290,8 +276,8 @@ class _FlickerTextState extends State<FlickerText>
         setState(() {
           _isShowingText = false;
           enabled = true;
-          _resetParticleSize();
         });
+        _startIncreasingParticleSize();
       }
     });
   }
@@ -304,93 +290,113 @@ class _FlickerTextState extends State<FlickerText>
       onTapUp: (details) {
         fadeOffset = details.localPosition;
         _startDecreasingParticleSize();
+        if (_isShowingText) {
+          return;
+        }
+        if (widget.tapShow &&
+            spoilerRects.any((rect) => rect.contains(fadeOffset))) {
+          _showTextTemporarily();
+        } else if (widget.enable &&
+            spoilerRects.any((rect) => rect.contains(fadeOffset))) {
+          setState(() {
+            _onEnabledChanged(!enabled);
+          });
+        }
       },
-      child: CustomPaint(
-        child: SpoilerRichText(
-          onBoundariesCalculated: initializeOffsets,
-          key: UniqueKey(),
-          selection: widget.selection,
-          onPaint: (context, offset, superPaint) {
-            if (!enabled) {
-              superPaint(context, offset);
-              return;
-            }
+      child: SpoilerRichText(
+        onBoundariesCalculated: initializeOffsets,
+        key: UniqueKey(),
+        selection: widget.selection,
+        onPaint: (context, offset, superPaint) {
+          if (!enabled) {
+            superPaint(context, offset);
+            return;
+          }
 
-            final isAnimating = fadeAnimationController != null &&
-                fadeAnimationController!.isAnimating;
+          final isAnimating = fadeAnimationController != null &&
+              fadeAnimationController!.isAnimating;
 
-            late final double radius;
-            late final Offset center;
+          late final double radius;
+          late final Offset center;
 
-            void updateRadius() {
-              spoilerBounds.getFarthestPoint(fadeOffset + offset);
-              final distance = (fadeOffset - (fadeOffset + offset)).distance;
-              radius = distance * fadeAnimation!.value;
-              center = fadeOffset + offset;
-            }
+          void updateRadius() {
+            final farthestPoint =
+                spoilerBounds.getFarthestPoint(fadeOffset + offset);
+            final distance = (farthestPoint - (fadeOffset + offset)).distance;
+            radius = distance * fadeAnimation!.value;
+            center = fadeOffset + offset;
+          }
 
-            if (isAnimating) {
-              updateRadius();
-            }
+          if (isAnimating) {
+            updateRadius();
+          }
 
-            for (final point in particles) {
-              if (currentParticleSize > 0) {
-                final paint = Paint()
-                  ..strokeWidth = currentParticleSize
-                  ..color = point.color
-                  ..style = PaintingStyle.fill;
+          for (final point in particles) {
+            if (currentParticleSize > 0) {
+              final paint = Paint()
+                ..strokeWidth = currentParticleSize
+                ..color = point.color
+                ..style = PaintingStyle.fill;
 
-                if (isAnimating) {
-                  if ((center - point).distance < radius) {
-                    if ((center - point).distance > radius - 20) {
-                      context.canvas.drawCircle(
-                          point + offset,
-                          currentParticleSize * 1.5,
-                          paint..color = Colors.white);
-                    } else {
-                      context.canvas.drawCircle(
-                          point + offset, currentParticleSize, paint);
-                    }
+              if (isAnimating) {
+                if ((center - point).distance < radius) {
+                  if ((center - point).distance > radius - 20) {
+                    context.canvas.drawCircle(
+                      point + offset,
+                      currentParticleSize * 1.5,
+                      paint..color = Colors.white,
+                    );
+                  } else {
+                    context.canvas.drawCircle(
+                      point + offset,
+                      currentParticleSize,
+                      paint,
+                    );
                   }
-                } else {
-                  context.canvas
-                      .drawCircle(point + offset, currentParticleSize, paint);
                 }
+              } else {
+                context.canvas.drawCircle(
+                  point + offset,
+                  currentParticleSize,
+                  paint,
+                );
               }
             }
+          }
 
-            void drawSplashAnimation() {
-              final rect = Rect.fromCircle(center: fadeOffset, radius: radius);
+          void drawSplashAnimation() {
+            final rect = Rect.fromCircle(
+                center: spoilerBounds.center + offset, radius: radius);
 
-              final paint = Paint()
-                ..color = Colors.transparent // Adjust for desired color
-                ..style = PaintingStyle.fill;
-              context.canvas.drawOval(rect, paint);
-            }
+            final path = Path.combine(
+              PathOperation.difference,
+              Path()..addRect(spoilerBounds),
+              Path()..addOval(rect),
+            );
 
-            if (isAnimating) {
-              drawSplashAnimation();
-            }
+            context.pushClipPath(true, offset, rect, path, superPaint);
+          }
 
-            if (widget.selection != null) {
-              final path = Path.combine(
-                PathOperation.difference,
-                Path()..addRect(context.estimatedBounds),
-                spoilerPath,
-              );
+          if (isAnimating) {
+            drawSplashAnimation();
+          }
 
-              context.pushClipPath(
-                  true, offset, context.estimatedBounds, path, superPaint);
-            }
+          if (widget.selection != null) {
+            final path = Path.combine(
+              PathOperation.difference,
+              Path()..addRect(context.estimatedBounds),
+              spoilerPath,
+            );
 
-            superPaint(context, offset);
-          },
-          initialized: particles.isNotEmpty,
-          text: TextSpan(
-            text: widget.text,
-            recognizer: widget.enableGesture ? _onTapRecognizer : null,
-            style: widget.style,
-          ),
+            context.pushClipPath(
+                true, offset, context.estimatedBounds, path, superPaint);
+          }
+        },
+        initialized: particles.isNotEmpty,
+        text: TextSpan(
+          text: widget.text,
+          recognizer: widget.enableGesture ? _onTapRecognizer : null,
+          style: widget.style,
         ),
       ),
     );

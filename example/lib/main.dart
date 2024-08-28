@@ -19,7 +19,7 @@ class SpoilerTextExampleApp extends StatelessWidget {
         body: const Center(
           child: FlickerText(
             showDurationInSeconds: 3,
-            tapWithTimer: true,
+            tapShow: true,
             maxParticleSize: 1,
             particleDensity: 10,
             speedOfParticles: 0.1,
