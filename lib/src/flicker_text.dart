@@ -19,7 +19,7 @@ class FlickerText extends StatefulWidget {
     this.fadeAnimation = false,
     this.enableGesture = false,
     this.selection,
-    this.tapShow = false,
+    this.tapWithTimer = false,
     this.showDurationInSeconds = 3,
     required this.text,
     this.style,
@@ -37,7 +37,7 @@ class FlickerText extends StatefulWidget {
   final String text;
   final TextSelection? selection;
   final bool
-      tapShow; // New parameter to enable/disable tap-to-show functionality
+      tapWithTimer; // New parameter to enable/disable tap-to-show functionality
   final int
       showDurationInSeconds; // New parameter to set the duration in seconds for showing the text
 
@@ -51,6 +51,7 @@ class _FlickerTextState extends State<FlickerText>
   AnimationController? fadeAnimationController;
   Animation<double>? fadeAnimation;
   Future<void>? _currentShowFuture;
+
   bool _isShowingText = false;
 
   late final AnimationController particleAnimationController;
@@ -75,6 +76,7 @@ class _FlickerTextState extends State<FlickerText>
       widget.speedOfParticles,
       rng.nextDouble() * 2 * pi,
       rect,
+      center: offset,
     );
   }
 
@@ -107,11 +109,13 @@ class _FlickerTextState extends State<FlickerText>
 
     if (widget.fadeAnimation) {
       fadeAnimationController = AnimationController(
-        duration: const Duration(milliseconds: 300),
+        duration: const Duration(seconds: 2),
         vsync: this,
       );
-      fadeAnimation =
-          Tween<double>(begin: 0, end: 1).animate(fadeAnimationController!);
+      fadeAnimation = Tween<double>(begin: 0, end: 1).animate(CurvedAnimation(
+        parent: fadeAnimationController!,
+        curve: Curves.easeInOutCubic,
+      ));
     }
 
     enabled = widget.enable;
@@ -128,7 +132,7 @@ class _FlickerTextState extends State<FlickerText>
           return;
         }
 
-        if (widget.tapShow &&
+        if (widget.tapWithTimer &&
             spoilerRects.any((rect) => rect.contains(fadeOffset))) {
           _showTextTemporarily();
         } else if (widget.enable &&
@@ -171,8 +175,13 @@ class _FlickerTextState extends State<FlickerText>
     if (oldWidget.enable != widget.enable) {
       _onEnabledChanged(widget.enable);
     }
+    _calculateCenterOffset();
 
     super.didUpdateWidget(oldWidget);
+  }
+
+  void _calculateCenterOffset() {
+    fadeOffset = spoilerBounds.center;
   }
 
   void _onEnabledChanged(bool enable) {
@@ -225,12 +234,12 @@ class _FlickerTextState extends State<FlickerText>
     return GestureDetector(
       onTapUp: (details) {
         fadeOffset = details.localPosition;
-
         if (_isShowingText) {
-          return;
-        }
-
-        if (widget.tapShow &&
+          setState(() {
+            _isShowingText = false;
+            enabled = true;
+          });
+        } else if (widget.tapWithTimer &&
             spoilerRects.any((rect) => rect.contains(fadeOffset))) {
           _showTextTemporarily();
         } else if (widget.enable &&
@@ -257,9 +266,8 @@ class _FlickerTextState extends State<FlickerText>
           late final Offset center;
 
           void updateRadius() {
-            final farthestPoint =
-                spoilerBounds.getFarthestPoint(fadeOffset + offset);
-            final distance = (farthestPoint - (fadeOffset + offset)).distance;
+            spoilerBounds.getFarthestPoint(fadeOffset + offset);
+            final distance = (fadeOffset - (fadeOffset + offset)).distance;
             radius = distance * fadeAnimation!.value;
             center = fadeOffset + offset;
           }
@@ -289,16 +297,13 @@ class _FlickerTextState extends State<FlickerText>
           }
 
           void drawSplashAnimation() {
-            final rect = Rect.fromCircle(
-                center: spoilerBounds.center + offset, radius: radius);
+            final rect = Rect.fromCircle(center: fadeOffset, radius: radius);
 
-            final path = Path.combine(
-              PathOperation.difference,
-              Path()..addRect(spoilerBounds),
-              Path()..addOval(rect),
-            );
-
-            context.pushClipPath(true, offset, rect, path, superPaint);
+            // Simplified drawing directly at the center
+            final paint = Paint()
+              ..color = Colors.transparent // Adjust for desired color
+              ..style = PaintingStyle.fill;
+            context.canvas.drawOval(rect, paint);
           }
 
           if (isAnimating) {

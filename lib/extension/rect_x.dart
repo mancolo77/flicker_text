@@ -1,9 +1,8 @@
 import 'dart:math';
-
 import 'package:flutter/rendering.dart';
 
 extension RectX on Rect {
-  /// Check if {offset} is inside the rectangle
+  /// Check if [offset] is inside the rectangle
   ///
   /// Example:
   /// ```dart
@@ -12,7 +11,6 @@ extension RectX on Rect {
   ///
   /// rect.containsOffset(offset); // true
   /// ```
-  ///
   bool containsOffset(Offset offset) {
     return bottom >= offset.dy &&
         top <= offset.dy &&
@@ -20,23 +18,26 @@ extension RectX on Rect {
         right >= offset.dx;
   }
 
+  /// Divide the rectangle into four smaller rectangles, centered around the original rectangle's center.
   (Rect, Rect, Rect, Rect) divideRect() {
     final halfWidth = width / 2;
     final halfHeight = height / 2;
+    final centerX = center.dx;
+    final centerY = center.dy;
 
-    final topLeft =
-        Rect.fromLTRB(left, top, left + halfWidth, top + halfHeight);
-    final topRight =
-        Rect.fromLTRB(left + halfWidth, top, right, top + halfHeight);
-    final bottomLeft =
-        Rect.fromLTRB(left, top + halfHeight, left + halfWidth, bottom);
-    final bottomRight =
-        Rect.fromLTRB(left + halfWidth, top + halfHeight, right, bottom);
+    final topLeft = Rect.fromLTRB(
+        centerX - halfWidth, centerY - halfHeight, centerX, centerY);
+    final topRight = Rect.fromLTRB(
+        centerX, centerY - halfHeight, centerX + halfWidth, centerY);
+    final bottomLeft = Rect.fromLTRB(
+        centerX - halfWidth, centerY, centerX, centerY + halfHeight);
+    final bottomRight = Rect.fromLTRB(
+        centerX, centerY, centerX + halfWidth, centerY + halfHeight);
 
     return (topLeft, topRight, bottomLeft, bottomRight);
   }
 
-  /// Get the farthest corner from {offset}
+  /// Get the farthest corner from [offset] relative to the center of the rectangle.
   Offset getFarthestPoint(Offset offset) {
     final (topLeft, topRight, bottomLeft, bottomRight) = divideRect();
 
@@ -53,12 +54,17 @@ extension RectX on Rect {
     }
   }
 
-  /// Get random offset inside the rectangle
+  /// Get a random offset inside the rectangle, centered around the rectangle's center.
   Offset randomOffset() {
-    final maxX = (width + left);
-    final minX = left;
-    final maxY = (height + top);
-    final minY = top;
+    final halfWidth = width / 2;
+    final halfHeight = height / 2;
+    final centerX = center.dx;
+    final centerY = center.dy;
+
+    final minX = centerX - halfWidth;
+    final maxX = centerX + halfWidth;
+    final minY = centerY - halfHeight;
+    final maxY = centerY + halfHeight;
 
     return Offset(
       minX + (Random().nextDouble() * (maxX - minX)),
@@ -68,6 +74,8 @@ extension RectX on Rect {
 }
 
 extension ListRectX on List<Rect> {
+  /// Calculate the bounding rectangle that contains all rectangles in the list.
+  /// Center the result around the combined bounds.
   Rect getBounds() {
     if (isEmpty) {
       return Rect.zero;
@@ -96,6 +104,13 @@ extension ListRectX on List<Rect> {
       }
     }
 
-    return Rect.fromLTRB(left, top, right, bottom);
+    final bounds = Rect.fromLTRB(left, top, right, bottom);
+    final centerX = bounds.center.dx;
+    final centerY = bounds.center.dy;
+
+    return Rect.fromCenter(
+        center: Offset(centerX, centerY),
+        width: bounds.width,
+        height: bounds.height);
   }
 }

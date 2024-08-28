@@ -24,6 +24,9 @@ class Particle extends Offset {
   /// The rect where the particle is located.
   final Rect rect;
 
+  /// The center of the particle's initial position.
+  final Offset center;
+
   const Particle(
     super.dx,
     super.dy,
@@ -32,8 +35,9 @@ class Particle extends Offset {
     this.life,
     this.speed,
     this.angle,
-    this.rect,
-  );
+    this.rect, {
+    required this.center,
+  });
 
   /// Copy the particle with new values
   Particle copyWith({
@@ -45,6 +49,7 @@ class Particle extends Offset {
     double? speed,
     double? angle,
     Rect? rect,
+    Offset? center,
   }) {
     return Particle(
       dx ?? this.dx,
@@ -55,15 +60,22 @@ class Particle extends Offset {
       speed ?? this.speed,
       angle ?? this.angle,
       rect ?? this.rect,
+      center: center ?? this.center,
     );
   }
 
-  /// Move the particle
+  /// Move the particle relative to the center
   ///
-  /// This method is used to move the particle.
-  /// It calculates the next position of the particle based on the current position, speed, and angle.
+  /// This method is used to move the particle relative to its center.
+  /// It calculates the next position of the particle based on the current position, speed, angle, and center.
   Particle move() {
-    final next = this + Offset.fromDirection(angle, speed);
+    final offsetFromCenter =
+        this - center; // Calculate current offset from center
+    final nextOffsetFromCenter =
+        offsetFromCenter + Offset.fromDirection(angle, speed);
+
+    final next = center +
+        nextOffsetFromCenter; // Calculate the new position relative to the center
 
     final lifetime = life - 0.01;
     final color = lifetime > .1 ? this.color.withOpacity(lifetime) : this.color;
@@ -73,8 +85,11 @@ class Particle extends Offset {
       dy: next.dy,
       life: lifetime,
       color: color,
-      // Random angle
-      angle: angle + (Random().nextDouble() - 0.5),
+      angle: angle + (Random().nextDouble() - 0.5) * 0.5,
     );
+  }
+
+  bool isWithinRadius(Offset checkCenter, double radius) {
+    return (this - checkCenter).distance <= radius;
   }
 }

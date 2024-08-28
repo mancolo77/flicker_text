@@ -18,8 +18,6 @@ class SpoilerTextExampleApp extends StatelessWidget {
         ),
         body: const Center(
           child: FlickerText(
-            showDurationInSeconds: 3,
-            tapShow: true,
             enable: true,
             maxParticleSize: 1.5,
             particleDensity: .4,
@@ -27,10 +25,9 @@ class SpoilerTextExampleApp extends StatelessWidget {
             fadeRadius: 1,
             fadeAnimation: true,
             enableGesture: true,
-            selection: TextSelection(baseOffset: 0, extentOffset: 18),
-            text: 'This is a spoiler! Tap to reveal.',
+            text: '12312323',
             style: TextStyle(
-              fontSize: 50,
+              fontSize: 40,
               fontWeight: FontWeight.bold,
               color: Colors.red,
             ),
