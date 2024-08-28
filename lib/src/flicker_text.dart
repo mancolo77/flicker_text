@@ -79,7 +79,6 @@ class _FlickerTextState extends State<FlickerText>
   }
 
   void initializeOffsets(StringDetails details) {
-    debugPrint('initializeOffsets');
     particles.clear();
     spoilerPath.reset();
 
