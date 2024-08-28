@@ -6,25 +6,12 @@ import 'dart:ui' show Color, Offset, Rect;
 /// This class is used to represent a single particle in the particle system.
 /// It contains the position, size, color, life, speed, angle, and rect of the particle.
 class Particle extends Offset {
-  /// The size of the particle.
   final double size;
-
-  /// The color of the particle.
   final Color color;
-
-  /// Value between 0 and 1 representing the life of the particle.
   final double life;
-
-  /// Value representing the speed of the particle in pixels per frame.
   final double speed;
-
-  /// Value representing the angle of the particle in radians.
   final double angle;
-
-  /// The rect where the particle is located.
   final Rect rect;
-
-  /// The center of the particle's initial position.
   final Offset center;
 
   const Particle(
@@ -39,7 +26,6 @@ class Particle extends Offset {
     required this.center,
   });
 
-  /// Copy the particle with new values
   Particle copyWith({
     double? dx,
     double? dy,
@@ -64,27 +50,20 @@ class Particle extends Offset {
     );
   }
 
-  /// Move the particle relative to the center
-  ///
-  /// This method is used to move the particle relative to its center.
-  /// It calculates the next position of the particle based on the current position, speed, angle, and center.
   Particle move() {
-    final offsetFromCenter =
-        this - center; // Calculate current offset from center
+    final offsetFromCenter = this - center;
     final nextOffsetFromCenter =
         offsetFromCenter + Offset.fromDirection(angle, speed);
-
-    final next = center +
-        nextOffsetFromCenter; // Calculate the new position relative to the center
+    final next = center + nextOffsetFromCenter;
 
     final lifetime = life - 0.01;
-    final color = lifetime > .1 ? this.color.withOpacity(lifetime) : this.color;
+    final updatedColor = lifetime > 0.1 ? color.withOpacity(lifetime) : color;
 
     return copyWith(
       dx: next.dx,
       dy: next.dy,
       life: lifetime,
-      color: color,
+      color: updatedColor,
       angle: angle + (Random().nextDouble() - 0.5) * 0.5,
     );
   }

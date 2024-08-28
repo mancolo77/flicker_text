@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/gestures.dart';
@@ -51,6 +52,9 @@ class _FlickerTextState extends State<FlickerText>
   AnimationController? fadeAnimationController;
   Animation<double>? fadeAnimation;
   Future<void>? _currentShowFuture;
+  late double currentParticleSize;
+  late double initialParticleSize; // Store the initial particle size
+  Timer? _timer;
 
   bool _isShowingText = false;
 
@@ -118,6 +122,9 @@ class _FlickerTextState extends State<FlickerText>
       ));
     }
 
+    initialParticleSize = 2;
+    currentParticleSize = initialParticleSize;
+
     enabled = widget.enable;
 
     if (enabled) {
@@ -131,7 +138,6 @@ class _FlickerTextState extends State<FlickerText>
         if (_isShowingText) {
           return;
         }
-
         if (widget.tapWithTimer &&
             spoilerRects.any((rect) => rect.contains(fadeOffset))) {
           _showTextTemporarily();
@@ -148,10 +154,70 @@ class _FlickerTextState extends State<FlickerText>
 
   @override
   void dispose() {
+    _timer?.cancel();
     _onTapRecognizer.dispose();
     fadeAnimationController?.dispose();
     particleAnimationController.dispose();
     super.dispose();
+  }
+
+  void _startDecreasingParticleSize() {
+    if (_timer != null) _timer!.cancel();
+
+    const double decreaseDurationInSeconds =
+        1.0; // Set the duration of the decrease
+    final int numberOfSteps = (decreaseDurationInSeconds * 1000 / 40)
+        .round(); // Determine the number of steps
+    final double stepSize = initialParticleSize / numberOfSteps; // Step size
+
+    _timer = Timer.periodic(const Duration(milliseconds: 50), (timer) {
+      setState(() {
+        if (currentParticleSize > 0) {
+          currentParticleSize =
+              (currentParticleSize - stepSize).clamp(0.0, initialParticleSize);
+        } else {
+          _timer?.cancel();
+          setState(() {
+            _isShowingText = false;
+          });
+          enabled = true;
+
+          _currentShowFuture = Future.delayed(
+              Duration(seconds: widget.showDurationInSeconds), () {
+            if (mounted) {
+              _startIncreasingParticleSize(); //method add particles
+            }
+          });
+        }
+      });
+    });
+  }
+
+  void _startIncreasingParticleSize() {
+    if (_timer != null) _timer!.cancel();
+
+    const double increaseDurationInSeconds =
+        1.0;
+    final int numberOfSteps = (increaseDurationInSeconds * 1000 / 80)
+        .round(); 
+    final double stepSize = initialParticleSize / numberOfSteps; 
+
+    _timer = Timer.periodic(const Duration(milliseconds: 50), (timer) {
+      setState(() {
+        if (currentParticleSize < initialParticleSize) {
+          currentParticleSize =
+              (currentParticleSize + stepSize).clamp(0.0, initialParticleSize);
+        } else {
+          _timer?.cancel();
+        }
+      });
+    });
+  }
+
+  void _resetParticleSize() {
+    setState(() {
+      currentParticleSize = initialParticleSize;
+    });
   }
 
   void _myListener() {
@@ -214,7 +280,9 @@ class _FlickerTextState extends State<FlickerText>
       enabled = false;
     });
 
-    _currentShowFuture?.then((_) => _currentShowFuture = null);
+    _currentShowFuture?.then((_) {
+      _currentShowFuture = null;
+    });
 
     _currentShowFuture =
         Future.delayed(Duration(seconds: widget.showDurationInSeconds), () {
@@ -222,6 +290,7 @@ class _FlickerTextState extends State<FlickerText>
         setState(() {
           _isShowingText = false;
           enabled = true;
+          _resetParticleSize();
         });
       }
     });
@@ -234,98 +303,94 @@ class _FlickerTextState extends State<FlickerText>
     return GestureDetector(
       onTapUp: (details) {
         fadeOffset = details.localPosition;
-        if (_isShowingText) {
-          setState(() {
-            _isShowingText = false;
-            enabled = true;
-          });
-        } else if (widget.tapWithTimer &&
-            spoilerRects.any((rect) => rect.contains(fadeOffset))) {
-          _showTextTemporarily();
-        } else if (widget.enable &&
-            spoilerRects.any((rect) => rect.contains(fadeOffset))) {
-          setState(() {
-            _onEnabledChanged(!enabled);
-          });
-        }
+        _startDecreasingParticleSize();
       },
-      child: SpoilerRichText(
-        onBoundariesCalculated: initializeOffsets,
-        key: UniqueKey(),
-        selection: widget.selection,
-        onPaint: (context, offset, superPaint) {
-          if (!enabled) {
-            superPaint(context, offset);
-            return;
-          }
+      child: CustomPaint(
+        child: SpoilerRichText(
+          onBoundariesCalculated: initializeOffsets,
+          key: UniqueKey(),
+          selection: widget.selection,
+          onPaint: (context, offset, superPaint) {
+            if (!enabled) {
+              superPaint(context, offset);
+              return;
+            }
 
-          final isAnimating = fadeAnimationController != null &&
-              fadeAnimationController!.isAnimating;
+            final isAnimating = fadeAnimationController != null &&
+                fadeAnimationController!.isAnimating;
 
-          late final double radius;
-          late final Offset center;
+            late final double radius;
+            late final Offset center;
 
-          void updateRadius() {
-            spoilerBounds.getFarthestPoint(fadeOffset + offset);
-            final distance = (fadeOffset - (fadeOffset + offset)).distance;
-            radius = distance * fadeAnimation!.value;
-            center = fadeOffset + offset;
-          }
-
-          if (isAnimating) {
-            updateRadius();
-          }
-
-          for (final point in particles) {
-            final paint = Paint()
-              ..strokeWidth = point.size
-              ..color = point.color
-              ..style = PaintingStyle.fill;
+            void updateRadius() {
+              spoilerBounds.getFarthestPoint(fadeOffset + offset);
+              final distance = (fadeOffset - (fadeOffset + offset)).distance;
+              radius = distance * fadeAnimation!.value;
+              center = fadeOffset + offset;
+            }
 
             if (isAnimating) {
-              if ((center - point).distance < radius) {
-                if ((center - point).distance > radius - 20) {
-                  context.canvas.drawCircle(point + offset, point.size * 1.5,
-                      paint..color = Colors.white);
+              updateRadius();
+            }
+
+            for (final point in particles) {
+              if (currentParticleSize > 0) {
+                final paint = Paint()
+                  ..strokeWidth = currentParticleSize
+                  ..color = point.color
+                  ..style = PaintingStyle.fill;
+
+                if (isAnimating) {
+                  if ((center - point).distance < radius) {
+                    if ((center - point).distance > radius - 20) {
+                      context.canvas.drawCircle(
+                          point + offset,
+                          currentParticleSize * 1.5,
+                          paint..color = Colors.white);
+                    } else {
+                      context.canvas.drawCircle(
+                          point + offset, currentParticleSize, paint);
+                    }
+                  }
                 } else {
-                  context.canvas.drawCircle(point + offset, point.size, paint);
+                  context.canvas
+                      .drawCircle(point + offset, currentParticleSize, paint);
                 }
               }
-            } else {
-              context.canvas.drawCircle(point + offset, point.size, paint);
             }
-          }
 
-          void drawSplashAnimation() {
-            final rect = Rect.fromCircle(center: fadeOffset, radius: radius);
+            void drawSplashAnimation() {
+              final rect = Rect.fromCircle(center: fadeOffset, radius: radius);
 
-            // Simplified drawing directly at the center
-            final paint = Paint()
-              ..color = Colors.transparent // Adjust for desired color
-              ..style = PaintingStyle.fill;
-            context.canvas.drawOval(rect, paint);
-          }
+              final paint = Paint()
+                ..color = Colors.transparent // Adjust for desired color
+                ..style = PaintingStyle.fill;
+              context.canvas.drawOval(rect, paint);
+            }
 
-          if (isAnimating) {
-            drawSplashAnimation();
-          }
+            if (isAnimating) {
+              drawSplashAnimation();
+            }
 
-          if (widget.selection != null) {
-            final path = Path.combine(
-              PathOperation.difference,
-              Path()..addRect(context.estimatedBounds),
-              spoilerPath,
-            );
+            if (widget.selection != null) {
+              final path = Path.combine(
+                PathOperation.difference,
+                Path()..addRect(context.estimatedBounds),
+                spoilerPath,
+              );
 
-            context.pushClipPath(
-                true, offset, context.estimatedBounds, path, superPaint);
-          }
-        },
-        initialized: particles.isNotEmpty,
-        text: TextSpan(
-          text: widget.text,
-          recognizer: widget.enableGesture ? _onTapRecognizer : null,
-          style: widget.style,
+              context.pushClipPath(
+                  true, offset, context.estimatedBounds, path, superPaint);
+            }
+
+            superPaint(context, offset);
+          },
+          initialized: particles.isNotEmpty,
+          text: TextSpan(
+            text: widget.text,
+            recognizer: widget.enableGesture ? _onTapRecognizer : null,
+            style: widget.style,
+          ),
         ),
       ),
     );
