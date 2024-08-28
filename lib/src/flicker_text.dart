@@ -223,86 +223,106 @@ class _FlickerTextState extends State<FlickerText>
 
   @override
   Widget build(BuildContext context) {
-    return SpoilerRichText(
-      onBoundariesCalculated: initializeOffsets,
-      key: UniqueKey(),
-      selection: widget.selection,
-      onPaint: (context, offset, superPaint) {
-        if (!enabled) {
-          superPaint(context, offset);
+    return GestureDetector(
+      onTapUp: (details) {
+        fadeOffset = details.localPosition;
+
+        if (_isShowingText) {
           return;
         }
 
-        final isAnimating = fadeAnimationController != null &&
-            fadeAnimationController!.isAnimating;
-
-        late final double radius;
-        late final Offset center;
-
-        void updateRadius() {
-          final farthestPoint =
-              spoilerBounds.getFarthestPoint(fadeOffset + offset);
-          final distance = (farthestPoint - (fadeOffset + offset)).distance;
-          radius = distance * fadeAnimation!.value;
-          center = fadeOffset + offset;
-        }
-
-        if (isAnimating) {
-          updateRadius();
-        }
-
-        for (final point in particles) {
-          final paint = Paint()
-            ..strokeWidth = point.size
-            ..color = point.color
-            ..style = PaintingStyle.fill;
-
-          if (isAnimating) {
-            if ((center - point).distance < radius) {
-              if ((center - point).distance > radius - 20) {
-                context.canvas.drawCircle(point + offset, point.size * 1.5,
-                    paint..color = Colors.white);
-              } else {
-                context.canvas.drawCircle(point + offset, point.size, paint);
-              }
-            }
-          } else {
-            context.canvas.drawCircle(point + offset, point.size, paint);
-          }
-        }
-
-        void drawSplashAnimation() {
-          final rect = Rect.fromCircle(center: center, radius: radius);
-
-          final path = Path.combine(
-            PathOperation.difference,
-            Path()..addRect(spoilerBounds),
-            Path()..addOval(rect),
-          );
-
-          context.pushClipPath(true, offset, rect, path, superPaint);
-        }
-
-        if (isAnimating) {
-          drawSplashAnimation();
-        }
-
-        if (widget.selection != null) {
-          final path = Path.combine(
-            PathOperation.difference,
-            Path()..addRect(context.estimatedBounds),
-            spoilerPath,
-          );
-
-          context.pushClipPath(
-              true, offset, context.estimatedBounds, path, superPaint);
+        if (widget.tapShow &&
+            spoilerRects.any((rect) => rect.contains(fadeOffset))) {
+          _showTextTemporarily();
+        } else if (widget.enable &&
+            spoilerRects.any((rect) => rect.contains(fadeOffset))) {
+          setState(() {
+            _onEnabledChanged(!enabled);
+          });
         }
       },
-      initialized: particles.isNotEmpty,
-      text: TextSpan(
-        text: widget.text,
-        recognizer: widget.enableGesture ? _onTapRecognizer : null,
-        style: widget.style,
+      child: SpoilerRichText(
+        onBoundariesCalculated: initializeOffsets,
+        key: UniqueKey(),
+        selection: widget.selection,
+        onPaint: (context, offset, superPaint) {
+          if (!enabled) {
+            superPaint(context, offset);
+            return;
+          }
+
+          final isAnimating = fadeAnimationController != null &&
+              fadeAnimationController!.isAnimating;
+
+          late final double radius;
+          late final Offset center;
+
+          void updateRadius() {
+            final farthestPoint =
+                spoilerBounds.getFarthestPoint(fadeOffset + offset);
+            final distance = (farthestPoint - (fadeOffset + offset)).distance;
+            radius = distance * fadeAnimation!.value;
+            center = fadeOffset + offset;
+          }
+
+          if (isAnimating) {
+            updateRadius();
+          }
+
+          for (final point in particles) {
+            final paint = Paint()
+              ..strokeWidth = point.size
+              ..color = point.color
+              ..style = PaintingStyle.fill;
+
+            if (isAnimating) {
+              if ((center - point).distance < radius) {
+                if ((center - point).distance > radius - 20) {
+                  context.canvas.drawCircle(point + offset, point.size * 1.5,
+                      paint..color = Colors.white);
+                } else {
+                  context.canvas.drawCircle(point + offset, point.size, paint);
+                }
+              }
+            } else {
+              context.canvas.drawCircle(point + offset, point.size, paint);
+            }
+          }
+
+          void drawSplashAnimation() {
+            final rect = Rect.fromCircle(
+                center: spoilerBounds.center + offset, radius: radius);
+
+            final path = Path.combine(
+              PathOperation.difference,
+              Path()..addRect(spoilerBounds),
+              Path()..addOval(rect),
+            );
+
+            context.pushClipPath(true, offset, rect, path, superPaint);
+          }
+
+          if (isAnimating) {
+            drawSplashAnimation();
+          }
+
+          if (widget.selection != null) {
+            final path = Path.combine(
+              PathOperation.difference,
+              Path()..addRect(context.estimatedBounds),
+              spoilerPath,
+            );
+
+            context.pushClipPath(
+                true, offset, context.estimatedBounds, path, superPaint);
+          }
+        },
+        initialized: particles.isNotEmpty,
+        text: TextSpan(
+          text: widget.text,
+          recognizer: widget.enableGesture ? _onTapRecognizer : null,
+          style: widget.style,
+        ),
       ),
     );
   }
