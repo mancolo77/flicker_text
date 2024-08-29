@@ -79,7 +79,6 @@ class _FlickerTextState extends State<FlickerText>
       widget.speedOfParticles,
       rng.nextDouble() * 2 * pi,
       rect,
-      center: offset,
     );
   }
 
