@@ -46,8 +46,6 @@ class _FlickerTextState extends State<FlickerText>
 
   AnimationController? fadeAnimationController;
   Animation<double>? fadeAnimation;
-  Future<void>? _currentShowFuture;
-  bool _isShowingText = false;
 
   late final AnimationController particleAnimationController;
   late final Animation<double> particleAnimation;
@@ -60,6 +58,8 @@ class _FlickerTextState extends State<FlickerText>
   late double initialParticleSize;
   late double currentFadeRadius;
   late double initialFadeRadius;
+  bool _isShowingText = false;
+  Future<void>? _currentShowFuture;
   Timer? _timer;
 
   Offset fadeOffset = Offset.zero;
@@ -101,8 +101,6 @@ class _FlickerTextState extends State<FlickerText>
 
   @override
   void initState() {
-    super.initState();
-
     particleAnimationController =
         AnimationController(duration: const Duration(seconds: 1), vsync: this);
     particleAnimation = Tween<double>(begin: 0, end: 1)
@@ -128,55 +126,42 @@ class _FlickerTextState extends State<FlickerText>
     if (enabled) {
       _onEnabledChanged(widget.enable);
     }
+
+    super.initState();
   }
 
   void _myListener() {
+    setState(
+      () {
+        for (int index = 0; index < particles.length; index++) {
+          final offset = particles[index];
+
+          // If particle is dead, replace it with a new one
+          // Otherwise, move it
+          particles[index] =
+              offset.life <= 0.1 ? randomParticle(offset.rect) : offset.move();
+        }
+      },
+    );
+  }
+
+  void _showTextTemporarily() {
     setState(() {
-      for (int index = 0; index < particles.length; index++) {
-        final offset = particles[index];
-        // If particle is dead, replace it with a new one
-        // Otherwise, move it
-        particles[index] =
-            offset.life <= 0.1 ? randomParticle(offset.rect) : offset.move();
-      }
-    });
-  }
-
-  @override
-  void didUpdateWidget(covariant FlickerText oldWidget) {
-    if (oldWidget.selection != widget.selection ||
-        oldWidget.style != widget.style) {
-      particles.clear();
-    }
-
-    if (oldWidget.enable != widget.enable) {
-      _onEnabledChanged(widget.enable);
-    }
-
-    super.didUpdateWidget(oldWidget);
-  }
-
-  void _onEnabledChanged(bool enable) {
-    if (enable) {
-      setState(() => enabled = true);
-      particleAnimationController.repeat();
-      fadeAnimationController?.forward();
-    } else {
-      if (fadeAnimationController == null) {
-        stopAnimation();
-      } else {
-        fadeAnimationController!.reverse().whenCompleteOrCancel(() {
-          stopAnimation();
-        });
-      }
-    }
-  }
-
-  void stopAnimation() {
-    setState(() {
+      _isShowingText = true;
       enabled = false;
-      particleAnimationController.reset();
-      particles.clear();
+    });
+
+    _currentShowFuture?.then((_) => _currentShowFuture = null);
+
+    _currentShowFuture =
+        Future.delayed(Duration(seconds: widget.showDurationInSeconds), () {
+      if (mounted) {
+        setState(() {
+          _isShowingText = false;
+          enabled = true;
+        });
+        _startIncreasingParticleSize();
+      }
     });
   }
 
@@ -247,24 +232,51 @@ class _FlickerTextState extends State<FlickerText>
     });
   }
 
-  void _showTextTemporarily() {
-    setState(() {
-      _isShowingText = true;
-      enabled = false;
-    });
+  @override
+  void didUpdateWidget(covariant FlickerText oldWidget) {
+    if (oldWidget.selection != widget.selection ||
+        oldWidget.style != widget.style) {
+      particles.clear();
+    }
 
-    _currentShowFuture?.then((_) => _currentShowFuture = null);
+    if (oldWidget.enable != widget.enable) {
+      _onEnabledChanged(widget.enable);
+    }
 
-    _currentShowFuture =
-        Future.delayed(Duration(seconds: widget.showDurationInSeconds), () {
-      if (mounted) {
-        setState(() {
-          _isShowingText = false;
-          enabled = true;
+    super.didUpdateWidget(oldWidget);
+  }
+
+  void _onEnabledChanged(bool enable) {
+    if (enable) {
+      setState(() => enabled = true);
+      particleAnimationController.repeat();
+      fadeAnimationController?.forward();
+    } else {
+      if (fadeAnimationController == null) {
+        stopAnimation();
+      } else {
+        fadeAnimationController!.reverse().whenCompleteOrCancel(() {
+          stopAnimation();
         });
-        _startIncreasingParticleSize();
       }
+    }
+  }
+
+  void stopAnimation() {
+    setState(() {
+      enabled = false;
+      particleAnimationController.reset();
+      particles.clear();
     });
+  }
+
+  @override
+  void dispose() {
+    particleAnimation.removeListener(_myListener);
+    particleAnimationController.dispose();
+    fadeAnimationController?.dispose();
+    _timer?.cancel();
+    super.dispose();
   }
 
   @override
