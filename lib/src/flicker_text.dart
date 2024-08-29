@@ -168,7 +168,6 @@ class _FlickerTextState extends State<FlickerText>
     _timer = Timer.periodic(const Duration(milliseconds: 50), (timer) {
       setState(() {
         if (currentParticleSize > 0) {
-          debugPrint('$currentParticleSize');
           currentParticleSize =
               (currentParticleSize - stepSize).clamp(0.0, initialParticleSize);
         } else {
@@ -200,7 +199,6 @@ class _FlickerTextState extends State<FlickerText>
     _timer = Timer.periodic(const Duration(milliseconds: 50), (timer) {
       setState(() {
         if (currentParticleSize < initialParticleSize) {
-          debugPrint('$currentParticleSize');
           currentParticleSize =
               (currentParticleSize + stepSize).clamp(0.0, initialParticleSize);
         } else {
