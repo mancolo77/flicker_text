@@ -79,11 +79,11 @@ class _FlickerTextState extends State<FlickerText>
       widget.speedOfParticles,
       rng.nextDouble() * 2 * pi,
       rect,
+      center: offset,
     );
   }
 
   void initializeOffsets(StringDetails details) {
-    debugPrint('initializeOffsets');
     particles.clear();
     spoilerPath.reset();
 
@@ -168,6 +168,7 @@ class _FlickerTextState extends State<FlickerText>
     _timer = Timer.periodic(const Duration(milliseconds: 50), (timer) {
       setState(() {
         if (currentParticleSize > 0) {
+          debugPrint('$currentParticleSize');
           currentParticleSize =
               (currentParticleSize - stepSize).clamp(0.0, initialParticleSize);
         } else {
@@ -199,6 +200,7 @@ class _FlickerTextState extends State<FlickerText>
     _timer = Timer.periodic(const Duration(milliseconds: 50), (timer) {
       setState(() {
         if (currentParticleSize < initialParticleSize) {
+          debugPrint('$currentParticleSize');
           currentParticleSize =
               (currentParticleSize + stepSize).clamp(0.0, initialParticleSize);
         } else {
@@ -341,25 +343,16 @@ class _FlickerTextState extends State<FlickerText>
               if (isAnimating) {
                 if ((center - point).distance < radius) {
                   if ((center - point).distance > radius - 20) {
-                    context.canvas.drawCircle(
-                      point + offset,
-                      currentParticleSize * 1.5,
-                      paint..color = Colors.white,
-                    );
+                    context.canvas.drawCircle(point + offset,
+                        currentParticleSize * 1.5, paint..color = Colors.white);
                   } else {
-                    context.canvas.drawCircle(
-                      point + offset,
-                      currentParticleSize,
-                      paint,
-                    );
+                    context.canvas
+                        .drawCircle(point + offset, currentParticleSize, paint);
                   }
                 }
               } else {
-                context.canvas.drawCircle(
-                  point + offset,
-                  currentParticleSize,
-                  paint,
-                );
+                context.canvas
+                    .drawCircle(point + offset, currentParticleSize, paint);
               }
             }
           }
