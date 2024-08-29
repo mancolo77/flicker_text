@@ -153,37 +153,42 @@ class _FlickerTextState extends State<FlickerText>
     _onTapRecognizer.dispose();
     fadeAnimationController?.dispose();
     particleAnimationController.dispose();
+    _timer?.cancel();
     super.dispose();
   }
 
   void _startDecreasingParticleSize() {
     if (_timer != null) _timer!.cancel();
 
-    const double decreaseDurationInSeconds = 1.0; // Duration of decrease
-    final int numberOfSteps = (decreaseDurationInSeconds * 1000 / 50)
-        .round(); // Determine number of steps
-    final double stepSize = initialParticleSize / numberOfSteps; // Step size
+    const double decreaseDurationInSeconds = 1.0;
+    final int numberOfSteps = (decreaseDurationInSeconds * 1000 / 50).round();
+    final double stepSize = initialParticleSize / numberOfSteps;
 
     _timer = Timer.periodic(const Duration(milliseconds: 50), (timer) {
-      setState(() {
-        if (currentParticleSize > 0) {
-          currentParticleSize =
-              (currentParticleSize - stepSize).clamp(0.0, initialParticleSize);
-        } else {
-          _timer?.cancel();
-          setState(() {
-            _isShowingText = true; // Mark text as showing
-          });
-
-          // Start showing text and managing particle size
-          _currentShowFuture = Future.delayed(
-              Duration(seconds: widget.showDurationInSeconds), () {
+      if (mounted) {
+        setState(() {
+          if (currentParticleSize > 0) {
+            currentParticleSize = (currentParticleSize - stepSize)
+                .clamp(0.0, initialParticleSize);
+          } else {
+            _timer?.cancel();
             if (mounted) {
-              _startIncreasingParticleSize(); // Increase particle size
+              setState(() {
+                _isShowingText = true;
+              });
+
+              _currentShowFuture = Future.delayed(
+                  Duration(seconds: widget.showDurationInSeconds), () {
+                if (mounted) {
+                  _startIncreasingParticleSize();
+                }
+              });
             }
-          });
-        }
-      });
+          }
+        });
+      } else {
+        timer.cancel();
+      }
     });
   }
 
