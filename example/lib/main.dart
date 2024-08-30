@@ -17,15 +17,8 @@ class SpoilerTextExampleApp extends StatelessWidget {
           title: const Text('Spoiler Animation Example'),
         ),
         body: const Center(
-          child: FlickerText(
-            maxParticleSize: 1,
-            particleDensity: 10,
-            speedOfParticles: 0.1,
-            fadeRadius: 1,
-            fadeAnimation: true,
-            enableGesture: true,
-            enable: true,
-            text: '111111111',
+          child: SpoilerTextWidget(
+            text: '11111111',
             showDurationInSeconds: 3,
           ),
         ),

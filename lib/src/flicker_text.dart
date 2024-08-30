@@ -7,21 +7,21 @@ import 'package:flicker_text/models/string_details.dart';
 import 'package:flicker_text/widgets/spoiler_richtext.dart';
 import 'package:flutter/material.dart';
 
-class FlickerText extends StatefulWidget {
-  const FlickerText({
+class SpoilerTextWidget extends StatefulWidget {
+  const SpoilerTextWidget({
     super.key,
     this.particleColor = Colors.white70,
     this.maxParticleSize = 1,
-    this.particleDensity = 20,
+    this.particleDensity = 10,
     this.speedOfParticles = 0.2,
-    this.fadeRadius = 10,
-    this.enable = false,
-    this.fadeAnimation = false,
-    this.enableGesture = false,
+    this.fadeRadius = 1,
+    this.enable = true,
+    this.fadeAnimation = true,
+    this.enableGesture = true,
     this.selection,
     required this.text,
     this.style,
-    required this.showDurationInSeconds,
+    this.showDurationInSeconds = 3,
   });
   final double particleDensity;
   final double speedOfParticles;
@@ -37,10 +37,10 @@ class FlickerText extends StatefulWidget {
   final int showDurationInSeconds;
 
   @override
-  State createState() => _FlickerTextState();
+  State createState() => _SpoilerTextWidgetState();
 }
 
-class _FlickerTextState extends State<FlickerText>
+class _SpoilerTextWidgetState extends State<SpoilerTextWidget>
     with TickerProviderStateMixin {
   final rng = Random();
 
@@ -53,25 +53,25 @@ class _FlickerTextState extends State<FlickerText>
   Rect spoilerBounds = Rect.zero;
   final particles = <Particle>[];
   bool enabled = false;
+  bool _isShowingText = false;
+  Future<void>? _currentShowFuture;
 
   late double currentParticleSize;
   late double initialParticleSize;
   late double currentFadeRadius;
   late double initialFadeRadius;
-  bool _isShowingText = false;
-  Future<void>? _currentShowFuture;
   Timer? _timer;
 
   Offset fadeOffset = Offset.zero;
   Path spoilerPath = Path();
 
   Particle randomParticle(Rect rect) {
-    final offset = rect.deflate(currentFadeRadius).randomOffset();
+    final offset = rect.deflate(widget.fadeRadius).randomOffset();
 
     return Particle(
       offset.dx,
       offset.dy,
-      currentParticleSize,
+      widget.maxParticleSize,
       widget.particleColor,
       rng.nextDouble(),
       widget.speedOfParticles,
@@ -85,7 +85,7 @@ class _FlickerTextState extends State<FlickerText>
     spoilerPath.reset();
 
     spoilerRects =
-        details.words.map((e) => e.rect.deflate(currentFadeRadius)).toList();
+        details.words.map((e) => e.rect.deflate(widget.fadeRadius)).toList();
     spoilerBounds = spoilerRects.getBounds();
 
     for (final word in details.words) {
@@ -145,95 +145,8 @@ class _FlickerTextState extends State<FlickerText>
     );
   }
 
-  void _showTextTemporarily() {
-    setState(() {
-      _isShowingText = true;
-      enabled = false;
-    });
-
-    _currentShowFuture?.then((_) => _currentShowFuture = null);
-
-    _currentShowFuture =
-        Future.delayed(Duration(seconds: widget.showDurationInSeconds), () {
-      if (mounted) {
-        setState(() {
-          _isShowingText = false;
-          enabled = true;
-        });
-        _startIncreasingParticleSize();
-      }
-    });
-  }
-
-  void _startDecreasingParticleSize() {
-    if (_timer != null) _timer!.cancel();
-
-    const double decreaseDurationInSeconds = 1.0;
-    final int numberOfSteps = (decreaseDurationInSeconds * 1000 / 50).round();
-    final double stepSize = initialParticleSize / numberOfSteps;
-    final double fadeStepSize = initialFadeRadius / numberOfSteps;
-
-    _timer = Timer.periodic(const Duration(milliseconds: 50), (timer) {
-      if (mounted) {
-        setState(() {
-          if (currentParticleSize > 0 || currentFadeRadius > 0) {
-            currentParticleSize = (currentParticleSize - stepSize)
-                .clamp(0.0, initialParticleSize);
-            currentFadeRadius = (currentFadeRadius - fadeStepSize)
-                .clamp(0.0, initialFadeRadius);
-          } else {
-            _timer?.cancel();
-            if (mounted) {
-              setState(() {
-                _isShowingText = true;
-              });
-
-              _currentShowFuture = Future.delayed(
-                  Duration(seconds: widget.showDurationInSeconds), () {
-                if (mounted) {
-                  _startIncreasingParticleSize();
-                }
-              });
-            }
-          }
-        });
-      } else {
-        timer.cancel();
-      }
-    });
-  }
-
-  void _startIncreasingParticleSize() {
-    if (_timer != null) _timer!.cancel();
-
-    const double increaseDurationInSeconds = 1.0; // Duration of increase
-    final int numberOfSteps = (increaseDurationInSeconds * 1000 / 50)
-        .round(); // Determine number of steps
-    final double stepSize = initialParticleSize / numberOfSteps; // Step size
-    final double fadeStepSize = initialFadeRadius / numberOfSteps;
-
-    _timer = Timer.periodic(const Duration(milliseconds: 50), (timer) {
-      setState(() {
-        if (currentParticleSize < initialParticleSize ||
-            currentFadeRadius < initialFadeRadius) {
-          currentParticleSize =
-              (currentParticleSize + stepSize).clamp(0.0, initialParticleSize);
-          currentFadeRadius =
-              (currentFadeRadius + fadeStepSize).clamp(0.0, initialFadeRadius);
-        } else {
-          _timer?.cancel();
-          setState(() {
-            _isShowingText = false; // Mark text as hidden
-            enabled = true; // Enable particles again
-          });
-          particleAnimationController.repeat();
-        }
-      });
-    });
-  }
-
   @override
-  void didUpdateWidget(covariant FlickerText oldWidget) {
+  void didUpdateWidget(covariant SpoilerTextWidget oldWidget) {
     if (oldWidget.selection != widget.selection ||
         oldWidget.style != widget.style) {
       particles.clear();
@@ -275,8 +188,56 @@ class _FlickerTextState extends State<FlickerText>
     particleAnimation.removeListener(_myListener);
     particleAnimationController.dispose();
     fadeAnimationController?.dispose();
-    _timer?.cancel();
     super.dispose();
+  }
+
+  void _showTextTemporarily() {
+    setState(() {
+      _isShowingText = true;
+      enabled = false;
+    });
+
+    _currentShowFuture?.then((_) => _currentShowFuture = null);
+
+    _currentShowFuture =
+        Future.delayed(Duration(seconds: widget.showDurationInSeconds), () {
+      if (mounted) {
+        setState(() {
+          _isShowingText = false;
+          enabled = true;
+        });
+        _startIncreasingParticleSize();
+      }
+    });
+  }
+
+  void _startIncreasingParticleSize() {
+    if (_timer != null) _timer!.cancel();
+
+    const double increaseDurationInSeconds = 1.0; // Duration of increase
+    final int numberOfSteps = (increaseDurationInSeconds * 1000 / 10)
+        .round(); // Determine number of steps
+    final double stepSize = initialParticleSize / numberOfSteps; // Step size
+    final double fadeStepSize = initialFadeRadius / numberOfSteps;
+
+    _timer = Timer.periodic(const Duration(milliseconds: 50), (timer) {
+      setState(() {
+        if (currentParticleSize < initialParticleSize ||
+            currentFadeRadius < initialFadeRadius) {
+          currentParticleSize =
+              (currentParticleSize + stepSize).clamp(0.0, initialParticleSize);
+          currentFadeRadius =
+              (currentFadeRadius + fadeStepSize).clamp(0.0, initialFadeRadius);
+        } else {
+          _timer?.cancel();
+          setState(() {
+            _isShowingText = false; // Mark text as hidden
+            enabled = true; // Enable particles again
+          });
+          particleAnimationController.repeat();
+        }
+      });
+    });
   }
 
   @override
@@ -284,7 +245,6 @@ class _FlickerTextState extends State<FlickerText>
     return GestureDetector(
       onTapUp: (details) {
         fadeOffset = details.localPosition;
-        _startDecreasingParticleSize();
         if (_isShowingText) {
           return;
         }
