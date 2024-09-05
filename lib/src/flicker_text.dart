@@ -102,13 +102,15 @@ class _SpoilerTextWidgetState extends State<SpoilerTextWidget>
   }
 
   void _myListener() {
-    setState(() {
-      for (int index = 0; index < particles.length; index++) {
-        final offset = particles[index];
-        particles[index] =
-            offset.life <= 0.1 ? randomParticle(offset.rect) : offset.move();
-      }
-    });
+    if (mounted) {
+      setState(() {
+        for (int index = 0; index < particles.length; index++) {
+          final offset = particles[index];
+          particles[index] =
+              offset.life <= 0.1 ? randomParticle(offset.rect) : offset.move();
+        }
+      });
+    }
   }
 
   void _showTextTemporarily() {
@@ -157,20 +159,25 @@ class _SpoilerTextWidgetState extends State<SpoilerTextWidget>
         (widget.showDurationInSeconds * 1000 / 100).round();
     final double stepSize = initialParticleSize / numberOfSteps;
     _timer = Timer.periodic(const Duration(milliseconds: 40), (timer) {
-      setState(() {
-        if (currentParticleSize < initialParticleSize) {
-          currentParticleSize =
-              (currentParticleSize + stepSize).clamp(0.0, initialParticleSize);
-        } else {
-          timer.cancel();
-          setState(() {
-            _isShowingText = false;
-            enabled = true;
-          });
-          particleAnimationController.repeat();
-          _resetSpeedOfParticles(); // Reset speed after increasing particle size
-        }
-      });
+      if (mounted) {
+        setState(() {
+          if (currentParticleSize < initialParticleSize) {
+            currentParticleSize = (currentParticleSize + stepSize)
+                .clamp(0.0, initialParticleSize);
+          } else {
+            speedOfParticles = widget.speedOfParticles;
+            timer.cancel();
+            setState(() {
+              _isShowingText = false;
+              enabled = true;
+            });
+            particleAnimationController.repeat();
+            _resetSpeedOfParticles(); // Reset speed after increasing particle size
+          }
+        });
+      } else {
+        timer.cancel();
+      }
     });
   }
 
@@ -203,7 +210,7 @@ class _SpoilerTextWidgetState extends State<SpoilerTextWidget>
   Widget build(BuildContext context) {
     return GestureDetector(
       onTapUp: (details) {
-        if (_isSpeedIncreased) return; 
+        if (_isSpeedIncreased) return;
         fadeOffset = details.localPosition * 2;
         _startDecreasingParticleSize();
         if (_isShowingText) return;
@@ -216,7 +223,7 @@ class _SpoilerTextWidgetState extends State<SpoilerTextWidget>
         }
 
         setState(() {
-          speedOfParticles = 2;
+          speedOfParticles = 1;
           _isSpeedIncreased = true;
         });
       },
