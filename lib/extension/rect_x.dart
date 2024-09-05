@@ -11,11 +11,9 @@ extension RectX on Rect {
   ///
   /// rect.containsOffset(offset); // true
   /// ```
-  bool containsOffset(Offset offset) {
-    return bottom >= offset.dy &&
-        top <= offset.dy &&
-        left <= offset.dx &&
-        right >= offset.dx;
+  bool containsOffset(Offset offset, {double buffer = 2.0}) {
+    final expandedRect = inflate(buffer);
+    return expandedRect.contains(offset);
   }
 
   /// Divide the rectangle into four smaller rectangles, centered around the original rectangle's center.

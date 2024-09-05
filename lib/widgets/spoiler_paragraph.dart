@@ -12,6 +12,8 @@ class SpoilerParagraph extends RenderParagraph {
   final ValueSetter<StringDetails> onBoundariesCalculated;
   final PaintCallback? onPaint;
   final TextSelection? selection;
+  final double fixedWidth; // Fixed width for rectangles
+  final double fixedHeight; // Fixed height for rectangles
 
   SpoilerParagraph(
     super.text, {
@@ -20,6 +22,8 @@ class SpoilerParagraph extends RenderParagraph {
     this.onPaint,
     this.selection,
     required this.initialized,
+    this.fixedWidth = 50.0, // Default fixed width
+    this.fixedHeight = 20.0, // Default fixed height
   });
 
   /// Get list of words bounding boxes
@@ -29,7 +33,6 @@ class SpoilerParagraph extends RenderParagraph {
       text: text,
       textDirection: textDirection,
       textAlign: textAlign,
-      // textScaler: textScaler ,
       maxLines: maxLines,
       locale: locale,
       strutStyle: strutStyle,
@@ -39,7 +42,6 @@ class SpoilerParagraph extends RenderParagraph {
       maxWidth: constraints.maxWidth,
     );
 
-    // Get all text runs from text
     final textRuns = <Word>[];
 
     void getAllWordBoundaries(int offset, List<Word> list) {
@@ -49,19 +51,33 @@ class SpoilerParagraph extends RenderParagraph {
 
       final substr = text.toPlainText().substring(range.start, range.end);
 
-      /// Move to next word if current word is empty
+      // Move to next word if current word is empty
       if (substr.trim().isEmpty) {
         getAllWordBoundaries(range.end, list);
         return;
       }
 
-      // Get paragraph position
-      final pos = textPainter.getBoxesForSelection(
-          TextSelection(baseOffset: range.start, extentOffset: range.end));
+      // Calculate the actual position and size of the word
+      final boxes = textPainter.getBoxesForSelection(
+        TextSelection(baseOffset: range.start, extentOffset: range.end),
+      );
 
-      if (pos.isNotEmpty) {
-        textRuns
-            .add(Word(word: substr, rect: pos.first.toRect(), range: range));
+      for (final box in boxes) {
+        // Position the rectangles around the word but use fixed dimensions
+        final rect = Rect.fromLTWH(
+          box.left,
+          box.top,
+          fixedWidth, // Fixed width
+          fixedHeight, // Fixed height
+        );
+
+        textRuns.add(
+          Word(
+            word: substr,
+            rect: rect,
+            range: range,
+          ),
+        );
       }
 
       getAllWordBoundaries(range.end, list);
@@ -75,7 +91,12 @@ class SpoilerParagraph extends RenderParagraph {
           Word(
             word:
                 text.toPlainText().substring(selection!.start, selection!.end),
-            rect: box.toRect(),
+            rect: Rect.fromLTWH(
+              box.left, // Keep the actual word's position
+              box.top, // Keep the actual word's position
+              fixedWidth, // Fixed width
+              fixedHeight, // Fixed height
+            ),
             range: TextRange(start: selection!.start, end: selection!.end),
           ),
         );
@@ -90,7 +111,6 @@ class SpoilerParagraph extends RenderParagraph {
   void paint(PaintingContext context, Offset offset) {
     if (!initialized) {
       final bounds = getWords();
-
       onBoundariesCalculated(StringDetails(words: bounds));
     }
 
